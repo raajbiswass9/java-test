@@ -123,5 +123,39 @@ class UserRolesServiceTest {
         assertTrue(exception.getMessage().contains("not found"));
     }
 
+
+        @Test
+    public void testLoadUserRolesFromFile_shouldThrowRuntimeException_whenInputStreamIsNull1() throws Exception {
+        // Create the service instance
+        UserRolesService userRolesService = new UserRolesService();
+
+        // Inject file path using reflection
+        Field pathField = UserRolesService.class.getDeclaredField("userToRolesFilePath");
+        pathField.setAccessible(true);
+        pathField.set(userRolesService, "files/permissions/nonexistent.json");
+
+        // Set a custom ClassLoader that always returns null
+        ClassLoader mockClassLoader = new ClassLoader() {
+            @Override
+            public java.io.InputStream getResourceAsStream(String name) {
+                return null; // force null InputStream
+            }
+        };
+
+        // Set custom ClassLoader on current thread so getClass().getClassLoader() uses it
+        Thread currentThread = Thread.currentThread();
+        ClassLoader originalClassLoader = currentThread.getContextClassLoader();
+        currentThread.setContextClassLoader(mockClassLoader);
+
+        try {
+            // Expect the RuntimeException when InputStream is null (i.e. goes into else block)
+            RuntimeException ex = assertThrows(RuntimeException.class, userRolesService::cachableUserRoles);
+            assertTrue(ex.getMessage().contains("not found"));
+        } finally {
+            // Restore original ClassLoader
+            currentThread.setContextClassLoader(originalClassLoader);
+        }
+    }
+
 }
 
